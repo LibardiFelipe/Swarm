@@ -5,6 +5,8 @@
 #include "SPlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "SGameMode.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Camera/CameraComponent.h"
 
 // Sets default values
 ASCharacter::ASCharacter()
@@ -12,29 +14,25 @@ ASCharacter::ASCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	Camera->SetupAttachment(RootComponent);
+	if (Camera) {
+		Camera->bUsePawnControlRotation = true;
+	}
+
+	TPMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TPMesh"));
+	TPMesh->SetupAttachment(RootComponent);
+	if (TPMesh) {
+		TPMesh->bOwnerNoSee = true;
+		TPMesh->bOnlyOwnerSee = false;
+	}
+
+	if (FPMesh) {
+		FPMesh->bOwnerNoSee = false;
+		FPMesh->bOnlyOwnerSee = true;
+	}
+
 	Health = HUMAN_MAX_HEALTH;
-}
-
-float ASCharacter::GetMaxHealth() const
-{
-	switch (PlayerClass) {
-		case EPlayerClass::ZOMBIE: return ZOMBIE_MAX_HEALTH;
-		case EPlayerClass::NEMESIS: return NEMESIS_MAX_HEALTH;
-		case EPlayerClass::SURVIVOR: return SURVIVOR_MAX_HEALTH;
-		default:
-			return HUMAN_MAX_HEALTH;
-	}
-}
-
-float ASCharacter::GetKockbackResistance() const
-{
-	switch (PlayerClass) {
-		case EPlayerClass::ZOMBIE: return ZombieKockbackResistance;
-		case EPlayerClass::NEMESIS: return NemesisKockbackResistance;
-		case EPlayerClass::SURVIVOR: return SurvivorKockbackResistance;
-	default:
-		return HumanKockbackResistance;
-	}
 }
 
 // Called when the game starts or when spawned
@@ -59,6 +57,54 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	PlayerInputComponent->BindAxis("MoveForward", this, &ASCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &ASCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("LookUp", this, &ASCharacter::LookUp);
+	PlayerInputComponent->BindAxis("Turn", this, &ASCharacter::Turn);
+
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASCharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ASCharacter::StopJumping);
+}
+
+void ASCharacter::MoveForward(float value)
+{
+	if (!Controller || value == 0.f)
+		return;
+
+	const bool isOnGround = GetCharacterMovement()->IsMovingOnGround();
+	const FRotator rotation = Controller->GetControlRotation();
+	const FRotator yawRotation = FRotator(isOnGround ? 0.f : rotation.Pitch, rotation.Yaw, 0.f);
+
+	const FVector direction = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::X);
+	AddMovementInput(direction, value);
+}
+
+void ASCharacter::MoveRight(float value)
+{
+	if (!Controller || value == 0.f)
+		return;
+
+	const FRotator rotation = Controller->GetControlRotation();
+	const FRotator yawRotation = FRotator(0.f, rotation.Yaw, 0.f);
+
+	const FVector direction = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::Y);
+	AddMovementInput(direction, value);
+}
+
+void ASCharacter::LookUp(float value)
+{
+	if (!Controller || value == 0.f)
+		return;
+
+	AddControllerPitchInput(value);
+}
+
+void ASCharacter::Turn(float value)
+{
+	if (!Controller || value == 0.f)
+		return;
+
+	AddControllerYawInput(value);
 }
 
 void ASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -103,6 +149,28 @@ float ASCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEven
 	}
 
 	return trueDamage;
+}
+
+float ASCharacter::GetMaxHealth() const
+{
+	switch (PlayerClass) {
+	case EPlayerClass::ZOMBIE: return ZOMBIE_MAX_HEALTH;
+	case EPlayerClass::NEMESIS: return NEMESIS_MAX_HEALTH;
+	case EPlayerClass::SURVIVOR: return SURVIVOR_MAX_HEALTH;
+	default:
+		return HUMAN_MAX_HEALTH;
+	}
+}
+
+float ASCharacter::GetKockbackResistance() const
+{
+	switch (PlayerClass) {
+	case EPlayerClass::ZOMBIE: return ZombieKockbackResistance;
+	case EPlayerClass::NEMESIS: return NemesisKockbackResistance;
+	case EPlayerClass::SURVIVOR: return SurvivorKockbackResistance;
+	default:
+		return HumanKockbackResistance;
+	}
 }
 
 void ASCharacter::ChangeInfectionShield(bool bActivate)

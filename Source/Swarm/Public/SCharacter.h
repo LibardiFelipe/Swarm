@@ -10,6 +10,8 @@
 
 class ASPlayerController;
 class ASGameMode;
+class USkeletalMeshComponent;
+class UCameraComponent;
 
 UCLASS()
 class SWARM_API ASCharacter : public ACharacter
@@ -42,6 +44,20 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void MoveForward(float value);
+	void MoveRight(float value);
+	void LookUp(float value);
+	void Turn(float value);
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+		USkeletalMeshComponent* FPMesh = GetMesh();
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+		USkeletalMeshComponent* TPMesh;
+	
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+		UCameraComponent* Camera;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Stats")
 		ASPlayerController* PlayerController;
