@@ -26,6 +26,17 @@ float ASCharacter::GetMaxHealth() const
 	}
 }
 
+float ASCharacter::GetKockbackResistance() const
+{
+	switch (PlayerClass) {
+		case EPlayerClass::ZOMBIE: return ZombieKockbackResistance;
+		case EPlayerClass::NEMESIS: return NemesisKockbackResistance;
+		case EPlayerClass::SURVIVOR: return SurvivorKockbackResistance;
+	default:
+		return HumanKockbackResistance;
+	}
+}
+
 // Called when the game starts or when spawned
 void ASCharacter::BeginPlay()
 {
@@ -85,8 +96,10 @@ float ASCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEven
 	auto trueDamage = bRageMode ? ((RageModeDamageReduction / 100.f) * DamageAmount) : DamageAmount;
 	Health = FMath::Clamp(Health - trueDamage, -5.f, GetMaxHealth());
 
+	// TODO: Apply knockback force
+
 	if (!IsPlayerAlive()) {
-		// TODO: Call kill player functiom
+		// TODO: Call kill player function
 	}
 
 	return trueDamage;

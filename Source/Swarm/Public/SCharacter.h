@@ -37,6 +37,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 		bool IsPlayerHuman() const { return PlayerClass == EPlayerClass::HUMAN || PlayerClass == EPlayerClass::SURVIVOR; };
 
+	float GetKockbackResistance() const;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -61,6 +63,18 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
 		float SURVIVOR_MAX_HEALTH{ 12000.f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+		float HumanKockbackResistance{ 0.f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+		float ZombieKockbackResistance{ 0.f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+		float NemesisKockbackResistance{ 0.f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+		float SurvivorKockbackResistance{ 0.f };
 
 	// TODO: Turn into a replicatedUsing function with visual effects
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Stats")
