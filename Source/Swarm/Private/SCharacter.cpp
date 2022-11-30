@@ -13,6 +13,8 @@ ASCharacter::ASCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(RootComponent);
@@ -62,8 +64,9 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("LookUp", this, &ASCharacter::LookUp);
 	PlayerInputComponent->BindAxis("Turn", this, &ASCharacter::Turn);
 
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASCharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ASCharacter::StopJumping);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASCharacter::HandleJump);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ASCharacter::HandleCrouch);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ASCharacter::HandleUnCrouch);
 }
 
 void ASCharacter::MoveForward(float value)
@@ -107,6 +110,36 @@ void ASCharacter::Turn(float value)
 	AddControllerYawInput(value);
 }
 
+void ASCharacter::HandleCrouch()
+{
+	if (GetMovementComponent()->IsCrouching()) {
+		if (bFlipFlopCrouching)
+			UnCrouch();
+	}
+	else {
+		Crouch();
+	}
+}
+
+void ASCharacter::HandleUnCrouch()
+{
+	if (!bFlipFlopCrouching)
+		UnCrouch();
+}
+
+void ASCharacter::HandleJump()
+{
+	if (GetMovementComponent()->IsCrouching()) {
+		if (CanPlayerLeap()) {
+			bCanLeap = false;
+			SERVER_DoLeap();
+		}
+	}
+	else {
+		Jump();
+	}
+}
+
 void ASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -115,6 +148,8 @@ void ASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ASCharacter, PlayerClass);
 	DOREPLIFETIME(ASCharacter, bRageMode);
 	DOREPLIFETIME(ASCharacter, bHasInfectionShield);
+	DOREPLIFETIME_CONDITION(ASCharacter, bCanLeap, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ASCharacter, LeapCount, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(ASCharacter, PlayerController, COND_OwnerOnly);
 }
 
@@ -178,6 +213,32 @@ void ASCharacter::ChangeInfectionShield(bool bActivate)
 	// TODO: Call a MultiCast event with sound and particles
 
 	bHasInfectionShield = bActivate;
+}
+
+bool ASCharacter::CanPlayerLeap() const
+{
+	return (bCanLeap && LeapCount > 0) && (PlayerClass == EPlayerClass::NEMESIS || PlayerClass == EPlayerClass::SURVIVOR || PlayerClass == EPlayerClass::ZOMBIE);
+}
+
+void ASCharacter::SERVER_DoLeap_Implementation()
+{
+	bCanLeap = false;
+	LeapCount--;
+
+	GetCharacterMovement()->Launch(GetControlRotation().Vector() * 2000.f);
+
+	FTimerHandle timerHandle;
+	GetWorld()->GetTimerManager().SetTimer(timerHandle, this, &ASCharacter::ResetLeapCooldown, LeapCooldown, false, LeapCooldown);
+}
+
+void ASCharacter::ResetLeapCooldown()
+{
+	bCanLeap = true;
+}
+
+bool ASCharacter::SERVER_DoLeap_Validate()
+{
+	return bCanLeap && LeapCount > 0;
 }
 
 void ASCharacter::PossessedBy(AController* NewController)

@@ -50,6 +50,25 @@ protected:
 	void LookUp(float value);
 	void Turn(float value);
 
+	void HandleCrouch();
+	void HandleUnCrouch();
+	void HandleJump();
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Gameplay")
+		bool bCanLeap{ true };
+		
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Gameplay")
+		int32 LeapCount{ 0 };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay")
+		int32 MAX_LEAP_COUNT{ 3 };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay")
+		float LeapCooldown{ 5.f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay")
+		bool bFlipFlopCrouching{ false };
+
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
 		USkeletalMeshComponent* FPMesh = GetMesh();
 
@@ -106,5 +125,14 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Stats")
 		EPlayerClass PlayerClass{ EPlayerClass::HUMAN };
 
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Gameplay")
+		void SERVER_DoLeap();
+	UFUNCTION()
+		void SERVER_DoLeap_Implementation();
+	UFUNCTION()
+		bool SERVER_DoLeap_Validate();
+
+	bool CanPlayerLeap() const;
+	void ResetLeapCooldown();
 	void ChangeInfectionShield(bool bActivate);
 };
