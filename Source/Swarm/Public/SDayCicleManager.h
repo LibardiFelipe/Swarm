@@ -52,7 +52,7 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, ReplicatedUsing = OnRep_ActorRotation, Category = "Settings")
 		FRotator ActorRotation = FRotator::ZeroRotator;
 
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Settings")
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Settings")
 		bool bWasDayTime{ false };
 
 	void BroadcastDayCicleSwitch();
