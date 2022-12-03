@@ -61,11 +61,8 @@ void ASDayCicleManager::Tick(float DeltaTime)
 	bool isDayTime = GetActorRotation().Pitch <= 0.f;
 	if (bWasDayTime != isDayTime) {
 		bWasDayTime = isDayTime;
-		
-		// Do not instant broadcast the change, set a timer for it
-		float delay = DayCicleInMinutes / DelayOffsetBeforeSendDayCicleSwitch;
-		FTimerHandle timerHandle;
-		GetWorldTimerManager().SetTimer(timerHandle, this, &ASDayCicleManager::BroadcastDayCicleSwitch, delay, false, delay);
+
+		OnDayTimeSwitch.Broadcast(bWasDayTime);
 	}
 }
 
@@ -74,11 +71,6 @@ void ASDayCicleManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ASDayCicleManager, ActorRotation);
-}
-
-void ASDayCicleManager::BroadcastDayCicleSwitch()
-{
-	OnDayTimeSwitch.Broadcast(bWasDayTime);
 }
 
 void ASDayCicleManager::OnRep_ActorRotation()

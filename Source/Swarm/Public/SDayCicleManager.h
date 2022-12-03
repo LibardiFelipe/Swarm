@@ -34,9 +34,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 		float SunRotationReplicationInterval{ .1f };
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-		float DelayOffsetBeforeSendDayCicleSwitch{ 10.f };
-
 protected:
 	virtual void BeginPlay() override;
 
@@ -55,8 +52,6 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Settings")
 		bool bWasDayTime{ false };
 
-	void BroadcastDayCicleSwitch();
-	
 	UFUNCTION()
 		void OnRep_ActorRotation();
 	UFUNCTION()
