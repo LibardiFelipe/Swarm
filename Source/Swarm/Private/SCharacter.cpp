@@ -37,6 +37,15 @@ ASCharacter::ASCharacter()
 	Health = HUMAN_MAX_HEALTH;
 }
 
+void ASCharacter::Destroyed()
+{
+	if (GameMode) {
+		GameMode->RemoveCharacterFromInGameArray(this);
+	}
+
+	Super::Destroyed();
+}
+
 // Called when the game starts or when spawned
 void ASCharacter::BeginPlay()
 {
@@ -44,6 +53,13 @@ void ASCharacter::BeginPlay()
 	
 	if (HasAuthority()) {
 		GameMode = Cast<ASGameMode>(GetWorld()->GetAuthGameMode());
+
+		if (GameMode) {
+			GameMode->AddCharacterToInGameArray(this);
+
+			FTimerHandle timerHandle;
+			GetWorld()->GetTimerManager().SetTimer(timerHandle, GameMode, &ASGameMode::TryToStartGame, 1.f, false, 1.f);
+		}
 	}
 }
 
@@ -67,6 +83,11 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASCharacter::HandleJump);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ASCharacter::HandleCrouch);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ASCharacter::HandleUnCrouch);
+}
+
+void ASCharacter::CLIENT_ChangeFirstPersonSkeletalMesh_Implementation(EPlayerClass playerClass)
+{
+	FPMesh->SetSkeletalMesh(GetSkeletalMesh(playerClass));
 }
 
 void ASCharacter::MoveForward(float value)
@@ -140,6 +161,27 @@ void ASCharacter::HandleJump()
 	}
 }
 
+USkeletalMesh* ASCharacter::GetSkeletalMesh(EPlayerClass playerClass, bool bFirstPerson)
+{
+	// TODO: Change FP classes to TP when they are ready
+	switch (playerClass) {
+		case EPlayerClass::HUMAN: return bFirstPerson ? FP_HumanSkeletalMesh : TP_HumanSkeletalMesh;
+		case EPlayerClass::ZOMBIE: return bFirstPerson ? FP_ZombieSkeletalMesh : TP_ZombieSkeletalMesh;
+		case EPlayerClass::NEMESIS: return bFirstPerson ? FP_NemesisSkeletalMesh : TP_NemesisSkeletalMesh;
+		default: return bFirstPerson ? FP_SurvivorSkeletalMesh : TP_SurvivorSkeletalMesh;
+	}
+}
+
+TSubclassOf<UAnimInstance> ASCharacter::GetAnimInstanceClass(EPlayerClass playerClass)
+{
+	switch (playerClass) {
+	case EPlayerClass::HUMAN: return HumanAnimInstance;
+	case EPlayerClass::ZOMBIE: return ZombieAnimInstance;
+	case EPlayerClass::NEMESIS: return NemesisAnimInstance;
+	default: return SurvivorAnimInstance;
+	}
+}
+
 void ASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -197,6 +239,23 @@ float ASCharacter::GetMaxHealth() const
 	}
 }
 
+void ASCharacter::TurnPlayer(EPlayerClass newClass)
+{
+	CLIENT_ChangeFirstPersonSkeletalMesh(newClass);
+
+	// TODO: Call a multicast funcion to play sounds
+	// and particle effects.
+
+	PlayerClass = newClass;
+	Health = GetMaxHealth();
+}
+
+void ASCharacter::OnRep_PlayerClass()
+{
+	TPMesh->SetSkeletalMesh(GetSkeletalMesh(PlayerClass, false));
+	TPMesh->SetAnimInstanceClass(GetAnimInstanceClass(PlayerClass));
+}
+
 float ASCharacter::GetKockbackResistance() const
 {
 	switch (PlayerClass) {
@@ -217,7 +276,8 @@ void ASCharacter::ChangeInfectionShield(bool bActivate)
 
 bool ASCharacter::CanPlayerLeap() const
 {
-	return (bCanLeap && LeapCount > 0) && (PlayerClass == EPlayerClass::NEMESIS || PlayerClass == EPlayerClass::SURVIVOR || PlayerClass == EPlayerClass::ZOMBIE);
+	return (bCanLeap && LeapCount > 0 && GetMovementComponent()->IsMovingOnGround())
+		&& (PlayerClass == EPlayerClass::NEMESIS || PlayerClass == EPlayerClass::SURVIVOR || PlayerClass == EPlayerClass::ZOMBIE);
 }
 
 void ASCharacter::SERVER_DoLeap_Implementation()
@@ -225,7 +285,7 @@ void ASCharacter::SERVER_DoLeap_Implementation()
 	bCanLeap = false;
 	LeapCount--;
 
-	GetCharacterMovement()->Launch(GetControlRotation().Vector() * 2000.f);
+	GetCharacterMovement()->Launch(GetControlRotation().Vector() * LeapStrength);
 
 	FTimerHandle timerHandle;
 	GetWorld()->GetTimerManager().SetTimer(timerHandle, this, &ASCharacter::ResetLeapCooldown, LeapCooldown, false, LeapCooldown);
