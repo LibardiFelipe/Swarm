@@ -30,5 +30,6 @@ UENUM(BlueprintType)
 enum class EGameState : uint8 {
     WAITING_FOR_PLAYERS = 0 UMETA(DisplayName = "Waiting for players"),
     PREPARING_TO_START  = 1 UMETA(DisplayName = "Preparing to start"),
-    GAME_RUNNING        = 2 UMETA(DisplayName = "Game is running")
+    GAME_RUNNING        = 2 UMETA(DisplayName = "Game is running"),
+    GAME_ENDED          = 3 UMETA(DisplayName = "Game ended"),
 };

@@ -35,6 +35,9 @@ public:
 		uint8 GetAliveHumansCount() const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		uint8 GetAliveZombiesCount() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 		bool IsLastHumanAlive() const { return GetAliveHumansCount() == 1; };
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
@@ -44,6 +47,8 @@ public:
 	void RemoveCharacterFromInGameArray(ASCharacter* character);
 
 	void TryToStartGame();
+
+	void CheckForWinner();
 
 protected:
 	EGameMode GetRandomGameMode() const;

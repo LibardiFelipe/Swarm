@@ -72,6 +72,19 @@ uint8 ASGameMode::GetAliveHumansCount() const
 	return count;
 }
 
+uint8 ASGameMode::GetAliveZombiesCount() const
+{
+	uint8 count = 0;
+
+	for (auto& player : InGamePlayerCharacters) {
+		if (IsValid(player) && !player->IsPlayerHuman()) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
 void ASGameMode::AddCharacterToInGameArray(ASCharacter* character)
 {
 	InGamePlayerCharacters.AddUnique(character);
@@ -91,7 +104,6 @@ void ASGameMode::TryToStartGame()
 
 		// TODO: Warn players that the game is about to start in X seconds
 
-		CurrentGameState = EGameState::GAME_RUNNING;
 		if (CurrentGameMode == EGameMode::NONE) {
 			GEngine->AddOnScreenDebugMessage(-1, 2.5f, FColor::Red, TEXT("O array de gamemodes disponiveis esta vazio!"));
 			return;
@@ -100,6 +112,31 @@ void ASGameMode::TryToStartGame()
 		// TODO: Call timer to infect players
 		FTimerHandle timerHandle;
 		GetWorld()->GetTimerManager().SetTimer(timerHandle, this, &ASGameMode::InfectPlayers, StartGameCountdownSeconds, false, StartGameCountdownSeconds);
+	}
+}
+
+void ASGameMode::CheckForWinner()
+{
+	if (CurrentGameState != EGameState::GAME_RUNNING)
+		return;
+
+	int32 humans = GetAliveHumansCount();
+	int32 zombies = GetAliveZombiesCount();
+
+	if (humans > 0 && zombies > 0)
+		return;
+
+	if (humans == 0 && zombies == 0) {
+		CurrentGameState = EGameState::GAME_ENDED;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("O jogo empatou!"));
+	}
+	else if (zombies == 0) {
+		CurrentGameState = EGameState::GAME_ENDED;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Os zombies venceram!"));
+	}
+	else {
+		CurrentGameState = EGameState::GAME_ENDED;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Os humanos venceram!"));
 	}
 }
 
@@ -147,6 +184,8 @@ void ASGameMode::InfectPlayers()
 			TurnPlayers(InGamePlayerCharacters, EPlayerClass::SURVIVOR, sorted);
 		}
 	}
+
+	CurrentGameState = EGameState::GAME_RUNNING;
 }
 
 TArray<ASCharacter*> ASGameMode::SortPlayers(int32 quanty)

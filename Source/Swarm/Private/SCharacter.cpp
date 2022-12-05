@@ -41,6 +41,7 @@ void ASCharacter::Destroyed()
 {
 	if (GameMode) {
 		GameMode->RemoveCharacterFromInGameArray(this);
+		GameMode->CheckForWinner();
 	}
 
 	Super::Destroyed();
@@ -88,6 +89,7 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 void ASCharacter::CLIENT_ChangeFirstPersonSkeletalMesh_Implementation(EPlayerClass playerClass)
 {
 	FPMesh->SetSkeletalMesh(GetSkeletalMesh(playerClass));
+	FPMesh->SetAnimInstanceClass(GetAnimInstanceClass(playerClass));
 }
 
 void ASCharacter::MoveForward(float value)
@@ -248,6 +250,10 @@ void ASCharacter::TurnPlayer(EPlayerClass newClass)
 
 	PlayerClass = newClass;
 	Health = GetMaxHealth();
+
+	if (GameMode) {
+		GameMode->CheckForWinner();
+	}
 }
 
 void ASCharacter::OnRep_PlayerClass()
