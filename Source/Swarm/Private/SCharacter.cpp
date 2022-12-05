@@ -213,8 +213,7 @@ float ASCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEven
 			return 0.f;
 		}
 
-		// TODO: Call infect player function
-
+		TurnPlayer(EPlayerClass::ZOMBIE);
 		return 99999.f;
 	}
 	
