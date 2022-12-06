@@ -18,7 +18,7 @@ class SWARM_API ASGameMode : public AGameModeBase
 
 public:
 	ASGameMode();
-	
+	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 
@@ -50,9 +50,30 @@ public:
 
 	void CheckForWinner();
 
+	UFUNCTION(BlueprintCallable)
+		void RestartGame(float timeToRestart);
+
+	bool IsGameRunning() const { return CurrentGameState != EGameState::WAITING_FOR_PLAYERS && CurrentGameState != EGameState::PREPARING_TO_START; };
+
+	void RespawnPlayer(ASPlayerController* pController);
+
 protected:
 	EGameMode GetRandomGameMode() const;
 	void InfectPlayers();
+
+	void RestartRound();
+
+	TSubclassOf<ASCharacter> GetClassById(int32 classId) const;
+
+	TArray<AActor*> SpawnPoints;
+
+	AActor* GetRandomSpawnPoint() const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay")
+		TArray<TSubclassOf<ASCharacter>> AvaiableZombieClasses;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay")
+		float RestarTimeAfterRoundEnded{ 5.f };
 
 	TArray<ASCharacter*> SortPlayers(int32 quanty);
 

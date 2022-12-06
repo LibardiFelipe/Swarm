@@ -4,10 +4,19 @@
 #include "SGameMode.h"
 #include "SPlayerController.h"
 #include "SCharacter.h"
+#include "GameFramework/PlayerStart.h"
+#include "Kismet/GameplayStatics.h"
 
 ASGameMode::ASGameMode()
 {
-	
+	bStartPlayersAsSpectators = true;
+}
+
+void ASGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), SpawnPoints);
 }
 
 void ASGameMode::PostLogin(APlayerController* NewPlayer)
@@ -127,17 +136,37 @@ void ASGameMode::CheckForWinner()
 		return;
 
 	if (humans == 0 && zombies == 0) {
-		CurrentGameState = EGameState::GAME_ENDED;
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("O jogo empatou!"));
 	}
 	else if (zombies == 0) {
-		CurrentGameState = EGameState::GAME_ENDED;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Os zombies venceram!"));
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Os humanos venceram!"));
 	}
 	else {
-		CurrentGameState = EGameState::GAME_ENDED;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Os humanos venceram!"));
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Os zombies venceram!"));
 	}
+
+	CurrentGameState = EGameState::GAME_ENDED;
+	RestartGame(RestarTimeAfterRoundEnded);
+}
+
+void ASGameMode::RestartGame(float timeToRestart)
+{
+	FTimerHandle timerHandle;
+	GetWorld()->GetTimerManager().SetTimer(timerHandle, this, &ASGameMode::RestartRound, timeToRestart, false, timeToRestart);
+}
+
+void ASGameMode::RespawnPlayer(ASPlayerController* pController)
+{
+	auto pawn = pController->GetPawn();
+	if (IsValid(pawn))
+		pawn->Destroy();
+
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	auto spawnPoint = GetRandomSpawnPoint();
+	auto character = GetWorld()->SpawnActor<ASCharacter>(GetClassById(pController->GetZombieClassId()), FTransform(spawnPoint->GetActorRotation(), spawnPoint->GetActorLocation(), FVector(1.f, 1.f, 1.f)), spawnInfo);
+	pController->Possess(character);
 }
 
 EGameMode ASGameMode::GetRandomGameMode() const
@@ -186,6 +215,28 @@ void ASGameMode::InfectPlayers()
 	}
 
 	CurrentGameState = EGameState::GAME_RUNNING;
+}
+
+void ASGameMode::RestartRound()
+{
+	for (auto& pc : InGamePlayerControllers) {
+		if (pc->GetZombieClassId() > -1) {
+			RespawnPlayer(pc);
+		}
+	}
+
+	CurrentGameState = EGameState::WAITING_FOR_PLAYERS;
+	TryToStartGame();
+}
+
+TSubclassOf<ASCharacter> ASGameMode::GetClassById(int32 classId) const
+{
+	return AvaiableZombieClasses[FMath::Clamp(classId, 0, AvaiableZombieClasses.Num() - 1)];
+}
+
+AActor* ASGameMode::GetRandomSpawnPoint() const
+{
+	return SpawnPoints[FMath::RandRange(0, SpawnPoints.Num() - 1)];
 }
 
 TArray<ASCharacter*> ASGameMode::SortPlayers(int32 quanty)
